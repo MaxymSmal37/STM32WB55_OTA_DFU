@@ -5,6 +5,8 @@
  #include "Common.h"
  #include "Config.h"
 
+ #include "stm32wbxx_hal.h"
+
 Botloader_FwVersion Bootloader_getFirmwareVersion(void)
 {
     Botloader_FwVersion version = 
@@ -18,3 +20,18 @@ Botloader_FwVersion Bootloader_getFirmwareVersion(void)
 
     return version;
 }
+
+uint32_t Boootloader_getMCUId(void)
+{
+    return HAL_GetDEVID();
+}
+
+uint32_t Bootloader_getSerialNumber(void)
+{
+#if USE_DEFAULT_SERIAL_NUMBER
+    return DEFAULT_SERIAL_NUMBER;
+#else
+    // Read the unique device ID from the STM32WB55 memory
+#endif
+}
+    

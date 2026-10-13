@@ -18,5 +18,7 @@ typedef struct {
 } Botloader_FwVersion;
 
 Botloader_FwVersion Bootloader_getFirmwareVersion(void);
+uint32_t Bootloader_getSerialNumber(void);
+uint32_t Boootloader_getMCUId(void);
 
 #endif // COMMON_H

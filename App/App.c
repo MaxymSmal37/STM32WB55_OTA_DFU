@@ -1,10 +1,21 @@
 #include "App.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include "main.h"
 
 typedef AppState (*AppHandler)(void);
 
+typedef struct {
+  AppState state;
+  uint16_t led_blink_ms;
+} App_s;
+
+App_s app;
+
 void App_Init(void)
 {
+  app.state = APP_INIT;
+  app.led_blink_ms = 0;
 }
 
 static AppState App_Initialize(void)
@@ -15,6 +26,7 @@ static AppState App_Initialize(void)
 
 static AppState App_WaitingForConnection(void)
 {
+  App_ProcessLed(APP_LED_BLINK);
   return APP_WAITING_FOR_CONNECTION;
 }
 
@@ -42,6 +54,43 @@ static AppState App_Error(void)
   return recovered ? APP_INIT : APP_ERROR;
 }
 
+void App_ProcessLed(AppLedMode_s led_mode)
+{
+  switch (led_mode)
+  {
+    case APP_LED_OFF:
+      HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_RESET);
+      break;
+
+    case APP_LED_ON:
+      HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
+      break;
+
+    case APP_LED_BLINK:
+      if (app.led_blink_ms == 0)
+      {
+        HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
+        app.led_blink_ms = APP_LED_BLINK_INTERVAL_MS;
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+void App_DeviceConnected(void)
+{
+  app.state = APP_IDLE;
+  App_ProcessLed(APP_LED_ON);
+}
+
+void App_DeviceDisconnected(void)
+{
+  app.state = APP_WAITING_FOR_CONNECTION;
+  App_ProcessLed(APP_LED_BLINK);
+}
+
 //-----------------------------------
 //--------Dispatcher-----------------
 //-----------------------------------
@@ -54,14 +103,20 @@ static const AppHandler handlers[APP_STATE_COUNT] = {
     [APP_ERROR] = App_Error,
 };
 
-static AppState current = APP_INIT;
-
 void App_Run(void)
 {
-  current = handlers[current]();
+  app.state = handlers[app.state]();
 }
 
 AppState App_GetState(void)
 {
-  return current;
+  return app.state;
+}
+
+void App_Tick(void)
+{
+  if (app.led_blink_ms > 0)
+  {
+    app.led_blink_ms--;
+  }
 }

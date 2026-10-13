@@ -21,12 +21,13 @@
 #include "ipcc.h"
 #include "rf.h"
 #include "rtc.h"
+#include "tim.h"
 #include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "App.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,8 +102,10 @@ int main(void)
   MX_GPIO_Init();
   MX_RTC_Init();
   MX_USB_Device_Init();
+  MX_TIM2_Init();
   MX_RF_Init();
   /* USER CODE BEGIN 2 */
+  App_Init();
   HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
   /* USER CODE END 2 */
 
@@ -117,6 +120,7 @@ int main(void)
   {
     /* USER CODE END WHILE */
     MX_APPE_Process();
+    App_Run();
 
     /* USER CODE BEGIN 3 */
   }
