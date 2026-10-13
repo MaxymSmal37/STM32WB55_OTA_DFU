@@ -28,8 +28,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct{
-  uint16_t  CustomSysinfoHdle;                    /**< SystemInfo handle */
-  uint16_t  CustomBootloderverHdle;                  /**< BootloaderFwVersion handle */
+  uint16_t  CustomSysteminformationHdle;                    /**< SysInfo handle */
+  uint16_t  CustomBootloaderfwverHdle;                  /**< BootloaderFwVersion handle */
 /* USER CODE BEGIN Context */
   /* Place holder for Characteristic Descriptors Handle*/
 
@@ -64,7 +64,7 @@ extern uint16_t Connection_Handle;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-uint16_t SizeBootloderver = 1;
+uint16_t SizeBootloaderfwver = 3;
 
 /**
  * START of Section BLE_DRIVER_CONTEXT
@@ -103,7 +103,7 @@ do {\
     uuid_struct[12] = uuid_12; uuid_struct[13] = uuid_13; uuid_struct[14] = uuid_14; uuid_struct[15] = uuid_15; \
 }while(0)
 
-#define COPY_SYSTEMINFO_UUID(uuid_struct)          COPY_UUID_128(uuid_struct,0x00,0x00,0x00,0x00,0xcc,0x7a,0x48,0x2a,0x98,0x4a,0x7f,0x2e,0xd5,0xb3,0xe5,0x8f)
+#define COPY_SYSINFO_UUID(uuid_struct)          COPY_UUID_128(uuid_struct,0x00,0x00,0x00,0x00,0xcc,0x7a,0x48,0x2a,0x98,0x4a,0x7f,0x2e,0xd5,0xb3,0xe5,0x8f)
 #define COPY_BOOTLOADERFWVERSION_UUID(uuid_struct)    COPY_UUID_128(uuid_struct,0x00,0x00,0x00,0x00,0x8e,0x22,0x45,0x41,0x9d,0x4c,0x21,0xed,0xae,0x82,0xed,0x19)
 
 /* USER CODE BEGIN PF */
@@ -120,6 +120,7 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
   SVCCTL_EvtAckStatus_t return_value;
   hci_event_pckt *event_pckt;
   evt_blecore_aci *blecore_evt;
+  aci_gatt_read_permit_req_event_rp0    *read_req;
   aci_gatt_notification_complete_event_rp0    *notification_complete;
   Custom_STM_App_Notification_evt_t     Notification;
   /* USER CODE BEGIN Custom_STM_Event_Handler_1 */
@@ -148,6 +149,18 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
           /* USER CODE BEGIN EVT_BLUE_GATT_READ_PERMIT_REQ_BEGIN */
 
           /* USER CODE END EVT_BLUE_GATT_READ_PERMIT_REQ_BEGIN */
+          read_req = (aci_gatt_read_permit_req_event_rp0*)blecore_evt->data;
+          if (read_req->Attribute_Handle == (CustomContext.CustomBootloaderfwverHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
+          {
+            return_value = SVCCTL_EvtAckFlowEnable;
+            /*USER CODE BEGIN CUSTOM_STM_Service_1_Char_1_ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE_1 */
+
+            /*USER CODE END CUSTOM_STM_Service_1_Char_1_ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE_1*/
+            aci_gatt_allow_read(read_req->Connection_Handle);
+            /*USER CODE BEGIN CUSTOM_STM_Service_1_Char_1_ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE_2 */
+
+            /*USER CODE END CUSTOM_STM_Service_1_Char_1_ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE_2*/
+          } /* if (read_req->Attribute_Handle == (CustomContext.CustomBootloaderfwverHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))*/
           /* USER CODE BEGIN EVT_BLUE_GATT_READ_PERMIT_REQ_END */
 
           /* USER CODE END EVT_BLUE_GATT_READ_PERMIT_REQ_END */
@@ -233,10 +246,10 @@ void SVCCTL_InitCustomSvc(void)
   SVCCTL_RegisterSvcHandler(Custom_STM_Event_Handler);
 
   /**
-   *          SystemInfo
+   *          SysInfo
    *
    * Max_Attribute_Records = 1 + 2*1 + 1*no_of_char_with_notify_or_indicate_property + 1*no_of_char_with_broadcast_property
-   * service_max_attribute_record = 1 for SystemInfo +
+   * service_max_attribute_record = 1 for SysInfo +
    *                                2 for BootloaderFwVersion +
    *                              = 3
    *
@@ -250,41 +263,41 @@ void SVCCTL_InitCustomSvc(void)
 
   /* USER CODE END SVCCTL_InitService1 */
 
-  COPY_SYSTEMINFO_UUID(uuid.Char_UUID_128);
+  COPY_SYSINFO_UUID(uuid.Char_UUID_128);
   ret = aci_gatt_add_service(UUID_TYPE_128,
                              (Service_UUID_t *) &uuid,
                              PRIMARY_SERVICE,
                              max_attr_record,
-                             &(CustomContext.CustomSysinfoHdle));
+                             &(CustomContext.CustomSysteminformationHdle));
   if (ret != BLE_STATUS_SUCCESS)
   {
-    APP_DBG_MSG("  Fail   : aci_gatt_add_service command: SysInfo, error code: 0x%x \n\r", ret);
+    APP_DBG_MSG("  Fail   : aci_gatt_add_service command: SystemInformation, error code: 0x%x \n\r", ret);
   }
   else
   {
-    APP_DBG_MSG("  Success: aci_gatt_add_service command: SysInfo , handle = 0x%04x \n\r", CustomContext.CustomSysinfoHdle);
+    APP_DBG_MSG("  Success: aci_gatt_add_service command: SystemInformation , handle = 0x%04x \n\r", CustomContext.CustomSysteminformationHdle);
   }
 
   /**
    *  BootloaderFwVersion
    */
   COPY_BOOTLOADERFWVERSION_UUID(uuid.Char_UUID_128);
-  ret = aci_gatt_add_char(CustomContext.CustomSysinfoHdle,
+  ret = aci_gatt_add_char(CustomContext.CustomSysteminformationHdle,
                           UUID_TYPE_128, &uuid,
-                          SizeBootloderver,
-                          CHAR_PROP_NONE,
+                          SizeBootloaderfwver,
+                          CHAR_PROP_READ,
                           ATTR_PERMISSION_NONE,
                           GATT_NOTIFY_READ_REQ_AND_WAIT_FOR_APPL_RESP,
                           0x10,
                           CHAR_VALUE_LEN_CONSTANT,
-                          &(CustomContext.CustomBootloderverHdle));
+                          &(CustomContext.CustomBootloaderfwverHdle));
   if (ret != BLE_STATUS_SUCCESS)
   {
-    APP_DBG_MSG("  Fail   : aci_gatt_add_char command   : BOOTLODERVER, error code: 0x%x \n\r", ret);
+    APP_DBG_MSG("  Fail   : aci_gatt_add_char command   : BOOTLOADERFWVER, error code: 0x%x \n\r", ret);
   }
   else
   {
-    APP_DBG_MSG("  Success: aci_gatt_add_char command   : BOOTLODERVER , handle = 0x%04x \n\r", CustomContext.CustomBootloderverHdle);
+    APP_DBG_MSG("  Success: aci_gatt_add_char command   : BOOTLOADERFWVER , handle = 0x%04x \n\r", CustomContext.CustomBootloaderfwverHdle);
   }
 
   /* USER CODE BEGIN SVCCTL_Init_Service1_Char1 */
@@ -315,19 +328,19 @@ tBleStatus Custom_STM_App_Update_Char(Custom_STM_Char_Opcode_t CharOpcode, uint8
   switch (CharOpcode)
   {
 
-    case CUSTOM_STM_BOOTLODERVER:
-      ret = aci_gatt_update_char_value(CustomContext.CustomSysinfoHdle,
-                                       CustomContext.CustomBootloderverHdle,
+    case CUSTOM_STM_BOOTLOADERFWVER:
+      ret = aci_gatt_update_char_value(CustomContext.CustomSysteminformationHdle,
+                                       CustomContext.CustomBootloaderfwverHdle,
                                        0, /* charValOffset */
-                                       SizeBootloderver, /* charValueLen */
+                                       SizeBootloaderfwver, /* charValueLen */
                                        (uint8_t *)  pPayload);
       if (ret != BLE_STATUS_SUCCESS)
       {
-        APP_DBG_MSG("  Fail   : aci_gatt_update_char_value BOOTLODERVER command, result : 0x%x \n\r", ret);
+        APP_DBG_MSG("  Fail   : aci_gatt_update_char_value BOOTLOADERFWVER command, result : 0x%x \n\r", ret);
       }
       else
       {
-        APP_DBG_MSG("  Success: aci_gatt_update_char_value BOOTLODERVER command\n\r");
+        APP_DBG_MSG("  Success: aci_gatt_update_char_value BOOTLOADERFWVER command\n\r");
       }
       /* USER CODE BEGIN CUSTOM_STM_App_Update_Service_1_Char_1*/
 
@@ -362,19 +375,19 @@ tBleStatus Custom_STM_App_Update_Char_Variable_Length(Custom_STM_Char_Opcode_t C
   switch (CharOpcode)
   {
 
-    case CUSTOM_STM_BOOTLODERVER:
-      ret = aci_gatt_update_char_value(CustomContext.CustomSysinfoHdle,
-                                       CustomContext.CustomBootloderverHdle,
+    case CUSTOM_STM_BOOTLOADERFWVER:
+      ret = aci_gatt_update_char_value(CustomContext.CustomSysteminformationHdle,
+                                       CustomContext.CustomBootloaderfwverHdle,
                                        0, /* charValOffset */
                                        size, /* charValueLen */
                                        (uint8_t *)  pPayload);
       if (ret != BLE_STATUS_SUCCESS)
       {
-        APP_DBG_MSG("  Fail   : aci_gatt_update_char_value BOOTLODERVER command, result : 0x%x \n\r", ret);
+        APP_DBG_MSG("  Fail   : aci_gatt_update_char_value BOOTLOADERFWVER command, result : 0x%x \n\r", ret);
       }
       else
       {
-        APP_DBG_MSG("  Success: aci_gatt_update_char_value BOOTLODERVER command\n\r");
+        APP_DBG_MSG("  Success: aci_gatt_update_char_value BOOTLOADERFWVER command\n\r");
       }
       /* USER CODE BEGIN Custom_STM_App_Update_Char_Variable_Length_Service_1_Char_1*/
 
@@ -409,11 +422,11 @@ tBleStatus Custom_STM_App_Update_Char_Ext(uint16_t Connection_Handle, Custom_STM
   switch (CharOpcode)
   {
 
-    case CUSTOM_STM_BOOTLODERVER:
+    case CUSTOM_STM_BOOTLOADERFWVER:
       /* USER CODE BEGIN Updated_Length_Service_1_Char_1*/
 
       /* USER CODE END Updated_Length_Service_1_Char_1*/
-      ret = Generic_STM_App_Update_Char_Ext(Connection_Handle, CustomContext.CustomSysinfoHdle, CustomContext.CustomBootloderverHdle, SizeBootloderver, pPayload);
+      ret = Generic_STM_App_Update_Char_Ext(Connection_Handle, CustomContext.CustomSysteminformationHdle, CustomContext.CustomBootloaderfwverHdle, SizeBootloaderfwver, pPayload);
 
       if (ret != BLE_STATUS_SUCCESS)
       {

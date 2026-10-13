@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "STM32WB55: Build, Flash and Debug (Release)",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/Release/STM32WB55_OTA.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32wbx.cfg"
+            ],
+            "armToolchainPath": "/Applications/ArmGNUToolchain/14.3.rel1/arm-none-eabi/bin",
+            "preLaunchTask": "CMake: Build Release",
+            "runToEntryPoint": "main"
+        }
+    ]
+}

@@ -8,6 +8,12 @@ cmake_minimum_required(VERSION 3.22)
 #
 
 # Setup compiler settings
+
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gcc-arm-none-eabi.cmake"
+        CACHE FILEPATH "Toolchain file")
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
@@ -37,9 +43,15 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+# Add application modules
+add_subdirectory(Common)
+add_subdirectory(Logger)
+add_subdirectory(App)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
+    
 )
 
 # Add sources to executable
@@ -65,4 +77,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+target_link_libraries(${CMAKE_PROJECT_NAME}
+    logger
+    common
+    app
 )

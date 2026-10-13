@@ -103,7 +103,7 @@ int main(void)
   MX_USB_Device_Init();
   MX_RF_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
   /* USER CODE END 2 */
 
   while(LL_HSEM_1StepLock(HSEM, CFG_HW_CLK48_CONFIG_SEMID));

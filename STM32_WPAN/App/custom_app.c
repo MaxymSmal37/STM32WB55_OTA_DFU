@@ -27,6 +27,8 @@
 #include "custom_stm.h"
 #include "stm32_seq.h"
 
+#include "Common.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -35,7 +37,7 @@
 /* Private typedef -----------------------------------------------------------*/
 typedef struct
 {
-  /* SystemInfo */
+  /* SysInfo */
   /* USER CODE BEGIN CUSTOM_APP_Context_t */
 
   /* USER CODE END CUSTOM_APP_Context_t */
@@ -76,9 +78,10 @@ uint16_t Connection_Handle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-/* SystemInfo */
+/* SysInfo */
 
 /* USER CODE BEGIN PFP */
+tBleStatus BleApp_SetFwVersion(void);
 
 /* USER CODE END PFP */
 
@@ -94,7 +97,13 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
 
     /* USER CODE END CUSTOM_STM_App_Notification_Custom_Evt_Opcode */
 
-    /* SystemInfo */
+    /* SysInfo */
+    case CUSTOM_STM_BOOTLOADERFWVER_READ_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_BOOTLOADERFWVER_READ_EVT */
+
+      /* USER CODE END CUSTOM_STM_BOOTLOADERFWVER_READ_EVT */
+      break;
+
     case CUSTOM_STM_NOTIFICATION_COMPLETE_EVT:
       /* USER CODE BEGIN CUSTOM_STM_NOTIFICATION_COMPLETE_EVT */
 
@@ -153,7 +162,8 @@ void Custom_APP_Notification(Custom_App_ConnHandle_Not_evt_t *pNotification)
 void Custom_APP_Init(void)
 {
   /* USER CODE BEGIN CUSTOM_APP_Init */
-
+  BleApp_SetFwVersion();
+  APP_DBG_MSG("BootloaderFwVer update ret=0x%02X\n", ret);
   /* USER CODE END CUSTOM_APP_Init */
   return;
 }
@@ -168,8 +178,24 @@ void Custom_APP_Init(void)
  *
  *************************************************************/
 
-/* SystemInfo */
+/* SysInfo */
 
 /* USER CODE BEGIN FD_LOCAL_FUNCTIONS*/
+tBleStatus BleApp_SetFwVersion(void)
+{
+  tBleStatus ret;
+  Botloader_FwVersion fwVersion = Bootloader_getFirmwareVersion();
+
+  UpdateCharData[0] = fwVersion.prefix_major;   // prefix major
+  UpdateCharData[1] = fwVersion.prefix_minor;   // prefix minor
+  UpdateCharData[2] = fwVersion.major;   // major
+  UpdateCharData[3] = fwVersion.minor;   // minor
+  UpdateCharData[4] = fwVersion.patch;   // patch
+
+  ret = Custom_STM_App_Update_Char(CUSTOM_STM_BOOTLOADERFWVER, UpdateCharData);
+
+  APP_DBG_MSG("BootloaderFwVer update ret=0x%02X\n", ret);
+  return ret;
+}
 
 /* USER CODE END FD_LOCAL_FUNCTIONS*/

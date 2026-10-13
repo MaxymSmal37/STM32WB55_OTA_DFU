@@ -5,15 +5,39 @@ set(CMAKE_C_COMPILER_ID GNU)
 set(CMAKE_CXX_COMPILER_ID GNU)
 
 # Some default GCC settings
-# arm-none-eabi- must be part of path environment
 set(TOOLCHAIN_PREFIX                arm-none-eabi-)
 
-set(CMAKE_C_COMPILER                ${TOOLCHAIN_PREFIX}gcc)
+file(GLOB ARM_GNU_TOOLCHAIN_BIN_DIRS
+    "/Applications/ArmGNUToolchain/*/arm-none-eabi/bin"
+)
+
+find_program(ARM_NONE_EABI_GCC
+    NAMES ${TOOLCHAIN_PREFIX}gcc
+    HINTS ${ARM_GNU_TOOLCHAIN_BIN_DIRS}
+    REQUIRED
+)
+find_program(ARM_NONE_EABI_GXX
+    NAMES ${TOOLCHAIN_PREFIX}g++
+    HINTS ${ARM_GNU_TOOLCHAIN_BIN_DIRS}
+    REQUIRED
+)
+find_program(ARM_NONE_EABI_OBJCOPY
+    NAMES ${TOOLCHAIN_PREFIX}objcopy
+    HINTS ${ARM_GNU_TOOLCHAIN_BIN_DIRS}
+    REQUIRED
+)
+find_program(ARM_NONE_EABI_SIZE
+    NAMES ${TOOLCHAIN_PREFIX}size
+    HINTS ${ARM_GNU_TOOLCHAIN_BIN_DIRS}
+    REQUIRED
+)
+
+set(CMAKE_C_COMPILER                ${ARM_NONE_EABI_GCC})
 set(CMAKE_ASM_COMPILER              ${CMAKE_C_COMPILER})
-set(CMAKE_CXX_COMPILER              ${TOOLCHAIN_PREFIX}g++)
-set(CMAKE_LINKER                    ${TOOLCHAIN_PREFIX}g++)
-set(CMAKE_OBJCOPY                   ${TOOLCHAIN_PREFIX}objcopy)
-set(CMAKE_SIZE                      ${TOOLCHAIN_PREFIX}size)
+set(CMAKE_CXX_COMPILER              ${ARM_NONE_EABI_GXX})
+set(CMAKE_LINKER                    ${ARM_NONE_EABI_GXX})
+set(CMAKE_OBJCOPY                   ${ARM_NONE_EABI_OBJCOPY})
+set(CMAKE_SIZE                      ${ARM_NONE_EABI_SIZE})
 
 set(CMAKE_EXECUTABLE_SUFFIX_ASM     ".elf")
 set(CMAKE_EXECUTABLE_SUFFIX_C       ".elf")

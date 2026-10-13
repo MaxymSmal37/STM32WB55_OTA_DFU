@@ -34,13 +34,14 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
-  /* SystemInfo */
-  CUSTOM_STM_BOOTLODERVER,
+  /* SysInfo */
+  CUSTOM_STM_BOOTLOADERFWVER,
 } Custom_STM_Char_Opcode_t;
 
 typedef enum
 {
   /* BootloaderFwVersion */
+  CUSTOM_STM_BOOTLOADERFWVER_READ_EVT,
   CUSTOM_STM_NOTIFICATION_COMPLETE_EVT,
 
   CUSTOM_STM_BOOT_REQUEST_EVT
@@ -66,7 +67,7 @@ typedef struct
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
-extern uint16_t SizeBootloderver;
+extern uint16_t SizeBootloaderfwver;
 
 /* USER CODE BEGIN EC */
 
