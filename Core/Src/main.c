@@ -120,9 +120,9 @@ int main(void)
   {
     /* USER CODE END WHILE */
     MX_APPE_Process();
-    App_Run();
 
     /* USER CODE BEGIN 3 */
+     App_Run();
   }
   /* USER CODE END 3 */
 }

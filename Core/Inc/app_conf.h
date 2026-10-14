@@ -118,8 +118,8 @@
 /**
  * Device name configuration for Generic Access Service
  */
-#define CFG_GAP_DEVICE_NAME             "TEMPLATE"
-#define CFG_GAP_DEVICE_NAME_LENGTH      (8)
+#define CFG_GAP_DEVICE_NAME             "OTA_BOOTLOADER"
+#define CFG_GAP_DEVICE_NAME_LENGTH      (14)
 
 /**
  * Define PHY

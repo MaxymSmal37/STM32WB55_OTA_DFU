@@ -6,7 +6,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define FW_VERSION_PREFIX_MAJOR "A"
+#define FW_VERSION_PREFIX_MAJOR "M"
 #define FW_VERSION_PREFIX_MINOR "X"
 
 #define FW_VERSION_MAJOR         0
