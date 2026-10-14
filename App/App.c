@@ -54,6 +54,22 @@ static AppState App_Error(void)
   return recovered ? APP_INIT : APP_ERROR;
 }
 
+static AppState App_StartUpdate(void)
+{
+  return APP_ERASE_FLASH;
+}
+
+static AppState App_EraseFlash(void)
+{
+  bool erase_done = true;
+  return erase_done ? APP_UPDATING : APP_ERASE_FLASH;
+}
+
+static AppState App_EndUpdate(void)
+{
+  return APP_IDLE;
+}
+
 void App_ProcessLed(AppLedMode_s led_mode)
 {
   switch (led_mode)
@@ -99,7 +115,10 @@ static const AppHandler handlers[APP_STATE_COUNT] = {
     [APP_INIT] = App_Initialize,
     [APP_WAITING_FOR_CONNECTION] = App_WaitingForConnection,
     [APP_IDLE] = App_Idle,
+    [APP_START_UPDATE] = App_StartUpdate,
+    [APP_ERASE_FLASH] = App_EraseFlash,
     [APP_UPDATING] = App_Updating,
+    [APP_END_UPDATE] = App_EndUpdate,
     [APP_ERROR] = App_Error,
 };
 
