@@ -2,10 +2,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "main.h"
+#include "BootloaderLib.h"
+#include "BootloaderConfig.h"
 
 typedef AppState (*AppHandler)(void);
 
-typedef struct {
+typedef struct
+{
+  erase_flashing_s erase_flash;
   AppState state;
   uint16_t led_blink_ms;
 } App_s;
@@ -26,7 +30,7 @@ static AppState App_Initialize(void)
 
 static AppState App_WaitingForConnection(void)
 {
-  App_ProcessLed(APP_LED_BLINK);
+  App_ProcessLed(APP_LED_FAST_BLINK);
   return APP_WAITING_FOR_CONNECTION;
 }
 
@@ -74,24 +78,24 @@ void App_ProcessLed(AppLedMode_s led_mode)
 {
   switch (led_mode)
   {
-    case APP_LED_OFF:
-      HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_RESET);
-      break;
+  case APP_LED_OFF:
+    HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_RESET);
+    break;
 
-    case APP_LED_ON:
-      HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
-      break;
+  case APP_LED_ON:
+    HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
+    break;
 
-    case APP_LED_BLINK:
-      if (app.led_blink_ms == 0)
-      {
-        HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
-        app.led_blink_ms = APP_LED_BLINK_INTERVAL_MS;
-      }
-      break;
+  case APP_LED_FAST_BLINK:
+    if (app.led_blink_ms == 0)
+    {
+      HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
+      app.led_blink_ms = APP_LED_BLINK_INTERVAL_MS;
+    }
+    break;
 
-    default:
-      break;
+  default:
+    break;
   }
 }
 
@@ -104,7 +108,91 @@ void App_DeviceConnected(void)
 void App_DeviceDisconnected(void)
 {
   app.state = APP_WAITING_FOR_CONNECTION;
-  App_ProcessLed(APP_LED_BLINK);
+  App_ProcessLed(APP_LED_FAST_BLINK);
+}
+
+void App_ProcessEraseFlash(void)
+{
+  switch (app.erase_flash.current_state)
+  {
+  case ERASE_FLASH_IDLE:
+    /* code */
+    break;
+
+  case ERASE_WAITING:
+  {
+    if (FLASH->SR & FLASH_SR_BSY)
+    {
+      break;
+    }
+
+    uint32_t errors = FLASH->SR & (FLASH_SR_PROGERR | FLASH_SR_WRPERR |
+                                   FLASH_SR_PGAERR | FLASH_SR_SIZERR |
+                                   FLASH_SR_PGSERR);
+    if (errors)
+    {
+      FLASH->SR = errors;
+      FLASH->CR &= ~FLASH_CR_PER;
+      flash_lock();
+      app.state = APP_ERROR;
+      app.erase_flash.current_state = ERASE_FLASH_IDLE;
+    }
+    else
+    {
+      app.erase_flash.current_state = app.erase_flash.state_after_waiting;
+    }
+    break;
+  }
+
+  case ERASE_START_PAGE_PROCESSING:
+  {
+    if (app.erase_flash.page_number * FLASH_PAGE_SIZE >= APP_FLASH_SIZE)
+    {
+      app.erase_flash.current_state = ERASE_FLASH_IDLE;
+      /// @todo Add exit from erase state.
+    }
+    else
+    {
+      app.erase_flash.current_address =
+          APP_FLASH_START + (app.erase_flash.page_number * FLASH_PAGE_SIZE);
+      app.erase_flash.state_after_waiting = ERASE_PAGE_PROCESSING;
+      app.erase_flash.current_state = ERASE_WAITING;
+    }
+    break;
+  }
+
+  case ERASE_PAGE_PROCESSING:
+  {
+    if (flash_unlock() != FLASH_OK)
+    {
+      app.state = APP_ERROR;
+      app.erase_flash.current_state = ERASE_FLASH_IDLE;
+      break;
+    }
+
+    uint32_t page_number =
+        (app.erase_flash.current_address - FLASH_BASE) / FLASH_PAGE_SIZE;
+
+    FLASH->CR &= ~FLASH_CR_PNB;
+    FLASH->CR |= (page_number << FLASH_CR_PNB_Pos) & FLASH_CR_PNB;
+    FLASH->CR |= FLASH_CR_PER;
+    FLASH->CR |= FLASH_CR_STRT;
+
+    app.erase_flash.state_after_waiting = ERASE_FINISH_PAGE_PROCESSING;
+    app.erase_flash.current_state = ERASE_WAITING;
+    break;
+  }
+
+  case ERASE_FINISH_PAGE_PROCESSING:
+    FLASH->CR &= ~FLASH_CR_PER;
+    flash_lock();
+    app.erase_flash.page_number++; 
+    app.erase_flash.current_state = ERASE_START_PAGE_PROCESSING;
+    break;
+
+  default:
+    break;
+  }
 }
 
 //-----------------------------------
