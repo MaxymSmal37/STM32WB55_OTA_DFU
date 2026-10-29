@@ -32,12 +32,15 @@
 #include "Common.h"
 #include "BLE_AppConfig.h"
 #include "App.h"
+#include "AppComm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct
 {
   /* SysInfo */
+  /* FirmwareTransfer */
+  uint8_t               Status_Notification_Status;
   /* USER CODE BEGIN CUSTOM_APP_Context_t */
 
   /* USER CODE END CUSTOM_APP_Context_t */
@@ -79,10 +82,14 @@ uint16_t Connection_Handle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* SysInfo */
+/* FirmwareTransfer */
+static void Custom_Status_Update_Char(void);
+
+static void Custom_Status_Send_Notification(void);
 
 /* USER CODE BEGIN PFP */
 tBleStatus BleApp_SetFwVersion(void);
-tBleStatus BleApp_SetMCUId(void);
+tBleStatus BleApp_SetWirelessFwInfo(void);
 tBleStatus BleApp_SetSerialNumber(void);
 /* USER CODE END PFP */
 
@@ -105,16 +112,54 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
       /* USER CODE END CUSTOM_STM_BOOTLOADER_FW_VER_READ_EVT */
       break;
 
-    case CUSTOM_STM_MCU_ID_READ_EVT:
-      /* USER CODE BEGIN CUSTOM_STM_MCU_ID_READ_EVT */
+    case CUSTOM_STM_WIRELESS_FW_VER_READ_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_WIRELESS_FW_VER_READ_EVT */
 
-      /* USER CODE END CUSTOM_STM_MCU_ID_READ_EVT */
+      /* USER CODE END CUSTOM_STM_WIRELESS_FW_VER_READ_EVT */
       break;
 
     case CUSTOM_STM_DEVICE_SN_READ_EVT:
       /* USER CODE BEGIN CUSTOM_STM_DEVICE_SN_READ_EVT */
 
       /* USER CODE END CUSTOM_STM_DEVICE_SN_READ_EVT */
+      break;
+
+    case CUSTOM_STM_HW_REV_READ_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_HW_REV_READ_EVT */
+
+      /* USER CODE END CUSTOM_STM_HW_REV_READ_EVT */
+      break;
+
+    /* FirmwareTransfer */
+    case CUSTOM_STM_CMD_WRITE_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_CMD_WRITE_EVT */
+      if (pNotification->DataTransfered.Length >= APP_COMMAND_FRAME_FIELDS_SIZE)
+      {
+        AppComm_ParseCommandMessage(pNotification->DataTransfered.pPayload);
+      }
+      /* USER CODE END CUSTOM_STM_CMD_WRITE_EVT */
+      break;
+
+    case CUSTOM_STM_DATA_WRITE_NO_RESP_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_DATA_WRITE_NO_RESP_EVT */
+      if (pNotification->DataTransfered.Length >= 128)
+      {
+        AppComm_ParseDataBanchMessage(pNotification->DataTransfered.pPayload,
+                                      pNotification->DataTransfered.Length);
+      }
+      /* USER CODE END CUSTOM_STM_DATA_WRITE_NO_RESP_EVT */
+      break;
+
+    case CUSTOM_STM_STATUS_NOTIFY_ENABLED_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_STATUS_NOTIFY_ENABLED_EVT */
+
+      /* USER CODE END CUSTOM_STM_STATUS_NOTIFY_ENABLED_EVT */
+      break;
+
+    case CUSTOM_STM_STATUS_NOTIFY_DISABLED_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_STATUS_NOTIFY_DISABLED_EVT */
+
+      /* USER CODE END CUSTOM_STM_STATUS_NOTIFY_DISABLED_EVT */
       break;
 
     case CUSTOM_STM_NOTIFICATION_COMPLETE_EVT:
@@ -176,7 +221,7 @@ void Custom_APP_Init(void)
 {
   /* USER CODE BEGIN CUSTOM_APP_Init */
   BleApp_SetFwVersion();
-  BleApp_SetMCUId();
+  BleApp_SetWirelessFwInfo();
   BleApp_SetSerialNumber();
   APP_DBG_MSG("BootloaderFwVer update ret=0x%02X\n", ret);
   /* USER CODE END CUSTOM_APP_Init */
@@ -194,18 +239,54 @@ void Custom_APP_Init(void)
  *************************************************************/
 
 /* SysInfo */
+/* FirmwareTransfer */
+__USED void Custom_Status_Update_Char(void) /* Property Read */
+{
+  uint8_t updateflag = 0;
+
+  /* USER CODE BEGIN Status_UC_1*/
+
+  /* USER CODE END Status_UC_1*/
+
+  if (updateflag != 0)
+  {
+    Custom_STM_App_Update_Char(CUSTOM_STM_STATUS, (uint8_t *)UpdateCharData);
+  }
+
+  /* USER CODE BEGIN Status_UC_Last*/
+
+  /* USER CODE END Status_UC_Last*/
+  return;
+}
+
+__USED void Custom_Status_Send_Notification(void) /* Property Notification */
+{
+  uint8_t updateflag = 0;
+
+  /* USER CODE BEGIN Status_NS_1*/
+
+  /* USER CODE END Status_NS_1*/
+
+  if (updateflag != 0)
+  {
+    Custom_STM_App_Update_Char(CUSTOM_STM_STATUS, (uint8_t *)UpdateCharData);
+  }
+
+  /* USER CODE BEGIN Status_NS_Last*/
+
+  /* USER CODE END Status_NS_Last*/
+
+  return;
+}
 
 /* USER CODE BEGIN FD_LOCAL_FUNCTIONS*/
 tBleStatus BleApp_SetFwVersion(void)
 {
   tBleStatus ret;
-  Botloader_FwVersion fwVersion = Bootloader_getFirmwareVersion();
+  uint8_t* fwVersion;
+  uint8_t fwVersionLen = Bootloader_getFirmwareVersion(fwVersion);
 
-  UpdateCharData[FW_VER_PREFIX_MAJOR] = fwVersion.prefix_major;   // prefix major
-  UpdateCharData[FW_VER_PREFIX_MINOR] = fwVersion.prefix_minor;   // prefix minor
-  UpdateCharData[FW_VER_MAJOR] = fwVersion.major;   // major
-  UpdateCharData[FW_VER_MINOR] = fwVersion.minor;   // minor
-  UpdateCharData[FW_VER_PATCH] = fwVersion.patch;   // patch
+  memcpy(UpdateCharData, fwVersion, fwVersionLen);
 
   ret = Custom_STM_App_Update_Char(CUSTOM_STM_BOOTLOADER_FW_VER, UpdateCharData);
 
@@ -213,19 +294,31 @@ tBleStatus BleApp_SetFwVersion(void)
   return ret;
 }
 
-tBleStatus BleApp_SetMCUId(void)
+tBleStatus BleApp_SetWirelessFwInfo(void)
 {
-  uint32_t mcuId = Boootloader_getMCUId();
+  uint8_t* fwVersion = "123456789ABCDEF";
 
-  memcpy(UpdateCharData, &mcuId, sizeof(mcuId));
-  return Custom_STM_App_Update_Char(CUSTOM_STM_MCU_ID, UpdateCharData);
+  memcpy(UpdateCharData, &fwVersion, sizeof(fwVersion));
+  return Custom_STM_App_Update_Char(CUSTOM_STM_WIRELESS_FW_VER_READ_EVT, UpdateCharData);
+}
+
+tBleStatus BleApp_SetHW_Revision(void)
+{
+  uint8_t* hwRev;
+  uint8_t hwRevLen = Bootloader_getHwRevision(hwRev);
+
+  memcpy(UpdateCharData, &hwRev, hwRevLen);
+
+  return Custom_STM_App_Update_Char(CUSTOM_STM_HW_REV_READ_EVT, UpdateCharData);
 }
 
 tBleStatus BleApp_SetSerialNumber(void)
 {
-  uint32_t serialNumber = Bootloader_getSerialNumber();
+  uint8_t* serialNumber;
+  uint8_t serialNumberLen = Bootloader_getSerialNumber(serialNumber);
 
-  memcpy(UpdateCharData, &serialNumber, sizeof(serialNumber));
+  memcpy(UpdateCharData, &serialNumber, serialNumberLen);
+
   return Custom_STM_App_Update_Char(CUSTOM_STM_DEVICE_SN, UpdateCharData);
 }
 

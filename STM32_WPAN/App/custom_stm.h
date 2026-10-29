@@ -36,18 +36,32 @@ typedef enum
 {
   /* SysInfo */
   CUSTOM_STM_BOOTLOADER_FW_VER,
-  CUSTOM_STM_MCU_ID,
+  CUSTOM_STM_WIRELESS_FW_VER,
   CUSTOM_STM_DEVICE_SN,
+  CUSTOM_STM_HW_REV,
+  /* FirmwareTransfer */
+  CUSTOM_STM_CMD,
+  CUSTOM_STM_DATA,
+  CUSTOM_STM_STATUS,
 } Custom_STM_Char_Opcode_t;
 
 typedef enum
 {
   /* BootloaderFwVersion */
   CUSTOM_STM_BOOTLOADER_FW_VER_READ_EVT,
-  /* MCU_DeviceID */
-  CUSTOM_STM_MCU_ID_READ_EVT,
+  /* Wireless_FW_INFO */
+  CUSTOM_STM_WIRELESS_FW_VER_READ_EVT,
   /* DeviceSerialNum */
   CUSTOM_STM_DEVICE_SN_READ_EVT,
+  /* HW_Revision */
+  CUSTOM_STM_HW_REV_READ_EVT,
+  /* Comand */
+  CUSTOM_STM_CMD_WRITE_EVT,
+  /* Update_Data */
+  CUSTOM_STM_DATA_WRITE_NO_RESP_EVT,
+  /* Update_Status */
+  CUSTOM_STM_STATUS_NOTIFY_ENABLED_EVT,
+  CUSTOM_STM_STATUS_NOTIFY_DISABLED_EVT,
   CUSTOM_STM_NOTIFICATION_COMPLETE_EVT,
 
   CUSTOM_STM_BOOT_REQUEST_EVT
@@ -74,8 +88,12 @@ typedef struct
 
 /* Exported constants --------------------------------------------------------*/
 extern uint16_t SizeBootloader_Fw_Ver;
-extern uint16_t SizeMcu_Id;
+extern uint16_t SizeWireless_Fw_Ver;
 extern uint16_t SizeDevice_Sn;
+extern uint16_t SizeHw_Rev;
+extern uint16_t SizeCmd;
+extern uint16_t SizeData;
+extern uint16_t SizeStatus;
 
 /* USER CODE BEGIN EC */
 

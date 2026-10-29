@@ -1,37 +1,33 @@
-/**
- * 
- */
 
- #include "Common.h"
- #include "Config.h"
+#include "Common.h"
+#include "Config.h"
 
- #include "stm32wbxx_hal.h"
+#include <string.h>
+#include <stdint.h>
 
-Botloader_FwVersion Bootloader_getFirmwareVersion(void)
+uint8_t Bootloader_getFirmwareVersion(uint8_t *fw_version)
 {
-    Botloader_FwVersion version = 
-    { 
-        .prefix_major = FW_VERSION_PREFIX_MAJOR[0],
-        .prefix_minor = FW_VERSION_PREFIX_MINOR[0],
-        .major = FW_VERSION_MAJOR,
-        .minor = FW_VERSION_MINOR,
-        .patch = FW_VERSION_PATCH
-    };
+    static const uint8_t version[] = FW_VERSION;
 
-    return version;
+    memcpy(fw_version, version, sizeof(version) - 1U);
+
+    return (uint8_t)(sizeof(version) - 1U);
 }
 
-uint32_t Boootloader_getMCUId(void)
+uint8_t Bootloader_getHwRevision(uint8_t *hwRev)
 {
-    return HAL_GetDEVID();
+    static const uint8_t revision[] = HW_REVISION;
+
+    memcpy(hwRev, revision, sizeof(revision) - 1U);
+
+    return (uint8_t)(sizeof(revision) - 1U);
 }
 
-uint32_t Bootloader_getSerialNumber(void)
+uint8_t Bootloader_getSerialNumber(uint8_t *serialNumber)
 {
-#if USE_DEFAULT_SERIAL_NUMBER
-    return DEFAULT_SERIAL_NUMBER;
-#else
-    // Read the unique device ID from the STM32WB55 memory
-#endif
+    static const uint8_t serial[] = DEVICE_SN;
+
+    memcpy(serialNumber, serial, sizeof(serial) - 1U);
+
+    return (uint8_t)(sizeof(serial) - 1U);
 }
-    
