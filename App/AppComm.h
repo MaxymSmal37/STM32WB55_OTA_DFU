@@ -32,9 +32,9 @@ typedef enum
 
 typedef enum
 {
-   DB_ADDRESS,
-   DB_BATCH_SIZE,
-   DB_DATA_START
+  DB_ADDRESS    = 0,
+  DB_BATCH_SIZE = 4,
+  DB_DATA_START = 5
 } DataBatchFrame_t;
 
 typedef struct
