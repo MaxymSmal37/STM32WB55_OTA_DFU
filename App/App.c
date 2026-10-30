@@ -94,11 +94,19 @@ void App_ProcessLed(AppLedMode_s led_mode)
     HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
     break;
 
+    case APP_LED_SLOW_BLINK:
+      if (app.led_blink_ms == 0)
+      {
+        HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
+        app.led_blink_ms = APP_LED_BLINK_SLOW_INTERVAL_MS;
+      }
+      break;
+
   case APP_LED_FAST_BLINK:
     if (app.led_blink_ms == 0)
     {
       HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
-      app.led_blink_ms = APP_LED_BLINK_INTERVAL_MS;
+      app.led_blink_ms = APP_LED_BLINK_FAST_INTERVAL_MS;
     }
     break;
 

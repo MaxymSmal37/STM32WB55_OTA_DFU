@@ -59,7 +59,8 @@ typedef struct
 
 /* Private macros -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define SYSINFO_STR_LEN   16U   /* FW version, wireless info, serial */
+#define SYSINFO_HWREV_LEN  8U
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -91,6 +92,7 @@ static void Custom_Status_Send_Notification(void);
 tBleStatus BleApp_SetFwVersion(void);
 tBleStatus BleApp_SetWirelessFwInfo(void);
 tBleStatus BleApp_SetSerialNumber(void);
+static tBleStatus BleApp_PublishSysInfo(void);
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
@@ -220,9 +222,8 @@ void Custom_APP_Notification(Custom_App_ConnHandle_Not_evt_t *pNotification)
 void Custom_APP_Init(void)
 {
   /* USER CODE BEGIN CUSTOM_APP_Init */
-  BleApp_SetFwVersion();
-  BleApp_SetWirelessFwInfo();
-  BleApp_SetSerialNumber();
+  BleApp_PublishSysInfo();
+
   APP_DBG_MSG("BootloaderFwVer update ret=0x%02X\n", ret);
   /* USER CODE END CUSTOM_APP_Init */
   return;
@@ -322,4 +323,31 @@ tBleStatus BleApp_SetSerialNumber(void)
   return Custom_STM_App_Update_Char(CUSTOM_STM_DEVICE_SN, UpdateCharData);
 }
 
+static tBleStatus BleApp_PublishSysInfo(void)
+{
+  uint8_t buf[SYSINFO_STR_LEN];
+  tBleStatus ret;
+
+  memset(buf, 0, sizeof(buf));
+  (void)Bootloader_getFirmwareVersion(buf);
+  ret = Custom_STM_App_Update_Char(CUSTOM_STM_BOOTLOADER_FW_VER, buf);
+  APP_DBG_MSG("FwVer update ret=0x%02X\n", ret);
+
+  memset(buf, 0, sizeof(buf));
+  (void)Bootloader_getWirelessFwVersion(buf);
+  ret = Custom_STM_App_Update_Char(CUSTOM_STM_WIRELESS_FW_VER, buf);
+  APP_DBG_MSG("WirelessVer update ret=0x%02X\n", ret);
+
+  memset(buf, 0, sizeof(buf));
+  (void)Bootloader_getSerialNumber(buf);
+  ret = Custom_STM_App_Update_Char(CUSTOM_STM_DEVICE_SN, buf);
+  APP_DBG_MSG("Serial update ret=0x%02X\n", ret);
+
+  memset(buf, 0, sizeof(buf));
+  (void)Bootloader_getHwRevision(buf);
+  ret = Custom_STM_App_Update_Char(CUSTOM_STM_HW_REV, buf);
+  APP_DBG_MSG("HwRev update ret=0x%02X\n", ret);
+
+  return ret;
+}
 /* USER CODE END FD_LOCAL_FUNCTIONS*/

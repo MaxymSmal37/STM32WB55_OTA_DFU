@@ -10,7 +10,9 @@
 
 #include <stdint.h> 
 
-#define APP_LED_BLINK_INTERVAL_MS 100
+#define APP_LED_BLINK_FAST_INTERVAL_MS 100
+#define APP_LED_BLINK_SLOW_INTERVAL_MS 1000
+
 
 #define APP_FW_HASH_SIZE 32U
 
@@ -38,7 +40,9 @@ typedef enum
 {
   APP_LED_OFF = 0,
   APP_LED_ON,
+  APP_LED_SLOW_BLINK,
   APP_LED_FAST_BLINK
+
 } AppLedMode_s;
 
 typedef enum
