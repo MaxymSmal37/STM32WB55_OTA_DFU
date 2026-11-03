@@ -37,6 +37,12 @@ typedef enum
   DB_DATA_START = 5
 } DataBatchFrame_t;
 
+typedef enum 
+{
+  RESPONSE_COMMAND_OK = 0,
+  RESPONSE_COMMAND_FAILED = 1
+} ResponseIDs_t;
+
 typedef struct
 {
   uint8_t sof;
@@ -69,7 +75,7 @@ typedef struct
 } AppComm_s;
 
 void AppComm_Init(void);
-void AppComm_ParseCommandMessage(uint8_t *data);
+void AppComm_ParseCommandMessage(uint8_t *data, uint8_t length);
 void AppComm_WriteDataBanch(uint32_t address, uint8_t size, uint8_t *data);
 void AppComm_ProcessCommand(CommandFrame_s *command_frame);
 void AppComm_ParseDataBanchMessage(uint8_t *data, uint8_t length);

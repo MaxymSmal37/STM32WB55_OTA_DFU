@@ -11,7 +11,7 @@
 #include <stdint.h> 
 
 #define APP_LED_BLINK_FAST_INTERVAL_MS 100
-#define APP_LED_BLINK_SLOW_INTERVAL_MS 1000
+#define APP_LED_BLINK_SLOW_INTERVAL_MS 500
 
 
 #define APP_FW_HASH_SIZE 32U
@@ -148,6 +148,6 @@ void App_SetUpdFwSize(uint32_t size);
 void App_SetUpdFwHash(uint8_t part, uint8_t *hashData);
 void App_GetUpdStatus(uint8_t* data);
 uint8_t App_FlashWriteBantch(uint32_t address, uint8_t size, uint8_t *data);
-
+void App_JumpToApplication(void);
 
 #endif // APP_H

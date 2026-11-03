@@ -135,10 +135,8 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
     /* FirmwareTransfer */
     case CUSTOM_STM_CMD_WRITE_EVT:
       /* USER CODE BEGIN CUSTOM_STM_CMD_WRITE_EVT */
-      if (pNotification->DataTransfered.Length >= APP_COMMAND_FRAME_FIELDS_SIZE)
-      {
-        AppComm_ParseCommandMessage(pNotification->DataTransfered.pPayload);
-      }
+      AppComm_ParseCommandMessage(pNotification->DataTransfered.pPayload,
+                                  pNotification->DataTransfered.Length);
       /* USER CODE END CUSTOM_STM_CMD_WRITE_EVT */
       break;
 

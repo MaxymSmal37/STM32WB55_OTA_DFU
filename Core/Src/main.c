@@ -28,6 +28,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "App.h"
+#include "usbd_cdc_if.h"
+#include "Logger.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -116,6 +118,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //App_JumpToApplication();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -213,7 +216,15 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+// int _write(int file, char *ptr, int len)
+// {
+//   // In alternativa alla trasmissione carattere per carattere, trasmette l'intero buffer
+//   while (CDC_Transmit_FS((uint8_t*)ptr, len) == USBD_BUSY)
+//   {
+//     // Attende se la periferica USB è occupata
+//   }
+//   return len;
+// }
 /* USER CODE END 4 */
 
 /**

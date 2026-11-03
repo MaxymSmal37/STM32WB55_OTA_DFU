@@ -1,0 +1,3 @@
+/Users/maxymsmal/repo_local/TestFw_for_OtaUpdate/CMakeFiles/TestFw_for_OtaUpdate.dir
+/Users/maxymsmal/repo_local/TestFw_for_OtaUpdate/CMakeFiles/edit_cache.dir
+/Users/maxymsmal/repo_local/TestFw_for_OtaUpdate/CMakeFiles/rebuild_cache.dir

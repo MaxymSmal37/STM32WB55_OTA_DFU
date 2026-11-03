@@ -6,30 +6,83 @@
 #include "custom_stm.h"
 
 #define APP_COMM_STATUS_INTERVAL_BATCHES 10U
+#define APP_COMMAND_SOF 0xAAU
 
 static uint8_t AppComm_BatchCount;
 
-static uint8_t AppComm_CheckCRC8(CommandFrame_s *frame)
+static uint8_t AppComm_CheckCRC8(const uint8_t *data, uint8_t length)
 {
-  return 0;
+  uint8_t crc = 0;
+
+  for (uint8_t i = 0; i < length; i++)
+  {
+    crc ^= data[i];
+    for (uint8_t bit = 0; bit < 8; bit++)
+    {
+      crc = (crc & 0x80U) != 0U ? (uint8_t)((crc << 1) ^ 0x07U) : (uint8_t)(crc << 1);
+    }
+  }
+
+  return crc;
 }
 
-void AppComm_ParseCommandMessage(uint8_t *data)
+static uint8_t AppComm_IsCommandLengthValid(const CommandFrame_s *frame)
+{
+  switch (frame->command)
+  {
+  case COMMAND_START_UPDATE:
+  case COMMAND_STOP_UPDATE:
+  case COMMAND_GET_STATUS:
+    return frame->length == 0U;
+
+  case COMMAND_SET_FW_SIZE:
+    return frame->length == sizeof(uint32_t);
+
+  case COMMAND_SET_FW_HASH:
+    return frame->length == (APP_HASH_PART_SIZE + 1U) &&
+           frame->data[0] < APP_HASH_PARTS_COUNT;
+
+  default:
+    return 0U;
+  }
+}
+
+void AppComm_ParseCommandMessage(uint8_t *data, uint8_t length)
 {
   CommandFrame_s frame;
+  uint8_t response = RESPONSE_COMMAND_FAILED;
+
+  if (data == NULL || length < (APP_COMMAND_FRAME_FIELDS_SIZE - 1U))
+  {
+    return;
+  }
+
+  if (data[FRAME_SOF] != APP_COMMAND_SOF ||
+      data[FRAME_LEGTH] > sizeof(frame.data) ||
+      length != (uint8_t)(data[FRAME_LEGTH] + APP_COMMAND_FRAME_FIELDS_SIZE - 1U) ||
+      AppComm_CheckCRC8(data, (uint8_t)(length - 1U)) != data[length - 1U])
+  {
+    goto respond;
+  }
 
   frame.sof = data[FRAME_SOF];
   frame.command = data[FRAME_COMMAND];
   frame.length = data[FRAME_LEGTH];
 
-  memcpy(frame.data, &data[FRAME_DATA], frame.length);
+  if (frame.length > 0U)
+  {
+    memcpy(frame.data, &data[FRAME_DATA], frame.length);
+  }
 
-  frame.crc = data[FRAME_DATA + frame.length];
-
-  if (AppComm_CheckCRC8(&frame) == 0)
+  frame.crc = data[length - 1U];
+  if (AppComm_IsCommandLengthValid(&frame) != 0U)
   {
     AppComm_ProcessCommand(&frame);
+    response = RESPONSE_COMMAND_OK;
   }
+
+respond:
+  Custom_STM_App_Update_Char_Variable_Length(CUSTOM_STM_CMD, &response, 1U);
 }
 
 void AppComm_ParseDataBanchMessage(uint8_t *data, uint8_t length)
@@ -100,6 +153,11 @@ void AppComm_ProcessCommand(CommandFrame_s *command_frame)
 void AppComm_GetUpdateStatus(uint8_t *data)
 {
   App_GetUpdStatus(data);
+}
+
+void AppComm_CommandResponse(uint8_t response)
+{
+  Custom_STM_App_Update_Char_Variable_Length(CUSTOM_STM_CMD, &response, 1U);
 }
 
 void AppComm_SendUpdateStatus(void)

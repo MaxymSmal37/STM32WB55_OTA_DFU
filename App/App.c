@@ -6,10 +6,9 @@
 #include "App.h"
 #include "BootloaderLib.h"
 #include "BootloaderConfig.h"
+#include "Logger.h"
 
 typedef AppState (*AppHandler)(void);
-
-
 
 App_s app;
 
@@ -44,6 +43,8 @@ static AppState App_Idle(void)
 
 static AppState App_Updating(void)
 {
+  App_JumpToApplication();
+
   if (AppProcessWritingPages() == WRITE_STATUS_OK)
   {
     return APP_END_UPDATE;
@@ -67,6 +68,10 @@ static AppState App_StartUpdate(void)
 
 static AppState App_EraseFlash(void)
 {
+  //LOG_INFO("Start Flash erasing. ");
+
+  App_ProcessLed(APP_LED_SLOW_BLINK);
+
   if (App_ProcessEraseFlash() == ERASE_STATUS_OK)
   {
     return APP_UPDATING;
@@ -247,6 +252,75 @@ static void App_WriteFlashAbort(void)
   app.state = APP_ERROR;
 }
 
+static void system_deinit(void)
+{
+  RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN;
+
+  GPIOE->ODR &= ~(1U << 4U);
+
+  TIM2->CR1 = 0U;  /* stop counting */
+  TIM2->DIER = 0U; /* disable update interrupt */
+  RCC->APB1ENR1 &= ~RCC_APB1ENR1_TIM2EN;
+
+  GPIOA->MODER |= (3U << 18) | (3U << 20); /* PA9, PA10 -> analog (reset state) */
+  GPIOA->AFR[1] &= ~((0xFU << 4) | (0xFU << 8));
+  GPIOA->PUPDR &= ~(3U << 20); /* drop PA10's pull-up */
+
+  /* Clock deinit: leave the app a known, cold-reset-like clock state
+   * (HSI16, PLL off) instead of handing it a running PLL it didn't
+   * configure itself.
+   *
+   * ORDER MATTERS: switch SYSCLK (RCC_CFGR.SW) to HSI16 FIRST. PLLON
+   * cannot be cleared by software while the PLL is still selected as
+   * SYSCLK (hardware-protected on STM32) - doing this in the other
+   * order silently no-ops the PLLON clear and hangs forever on the
+   * PLLRDY wait below, since PLLRDY then never clears either. */
+  RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | (0U << RCC_CFGR_SW_Pos); /* SW = HSI16 */
+  while ((RCC->CFGR & RCC_CFGR_SWS) != (0U << RCC_CFGR_SWS_Pos))
+    ;
+
+  RCC->CR &= ~RCC_CR_PLLON;
+  while (RCC->CR & RCC_CR_PLLRDY)
+    ;
+}
+
+void App_JumpToApplication(void)
+{
+  typedef void (*pFunction)(void);
+
+  uint32_t app_stack_ptr = *(volatile uint32_t *)(APP_FLASH_START + 0U);
+  uint32_t app_reset_addr = *(volatile uint32_t *)(APP_FLASH_START + 4U);
+
+  system_deinit();
+
+  __disable_irq();
+
+  for (uint32_t i = 0U; i < 8U; i++)
+  {
+    NVIC->ICER[i] = 0xFFFFFFFFU; /* mask every IRQ */
+    NVIC->ICPR[i] = 0xFFFFFFFFU; /* drop any pending IRQ */
+  }
+
+  SysTick->CTRL = 0U;
+  SysTick->LOAD = 0U;
+  SysTick->VAL = 0U;
+
+  SCB->VTOR = APP_FLASH_START; /* relocate vector table to the app's */
+  __set_MSP(app_stack_ptr);    /* set the app's own initial stack pointer */
+
+  __DSB();
+  __ISB();
+
+  __enable_irq();
+
+  pFunction app_entry = (pFunction)app_reset_addr;
+  app_entry();
+
+  while (1)
+  {
+  }
+}
+
 static WriteFlashStatus_s AppProcessWritingPages(void)
 {
   switch (app.write_flash.current_state)
@@ -371,10 +445,10 @@ AppState App_GetState(void)
 
 void App_SetState(AppState state)
 {
-  if (state == APP_START_UPDATE && app.state != APP_IDLE)
-  {
-    return;
-  }
+  // if (state == APP_START_UPDATE && app.state != APP_IDLE)
+  // {
+  //   return;
+  // }
 
   app.state = state;
 }

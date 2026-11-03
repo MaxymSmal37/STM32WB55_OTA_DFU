@@ -23,7 +23,7 @@
 #include "custom_stm.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "AppComm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -268,7 +268,8 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
 
         case ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE:
           /* USER CODE BEGIN EVT_BLUE_GATT_WRITE_PERMIT_REQ_BEGIN */
-
+          aci_gatt_write_permit_req_event_rp0 *write_perm_req =
+                (aci_gatt_write_permit_req_event_rp0 *)blecore_evt->data;
           /* USER CODE END EVT_BLUE_GATT_WRITE_PERMIT_REQ_BEGIN */
           write_perm_req = (aci_gatt_write_permit_req_event_rp0*)blecore_evt->data;
           if (write_perm_req->Attribute_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
@@ -276,6 +277,25 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
             return_value = SVCCTL_EvtAckFlowEnable;
             /* Allow or reject a write request from a client using aci_gatt_write_resp(...) function */
             /*USER CODE BEGIN CUSTOM_STM_Service_2_Char_1_ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE */
+            uint8_t response_code = 0;
+
+            if (write_perm_req->Data_Length > APP_COMMAND_FRAME_FIELDS_SIZE)
+            {
+              return_value = SVCCTL_EvtAckFlowDisable;
+              response_code = RESPONSE_COMMAND_OK;
+            }
+            else
+            {
+              return_value = SVCCTL_EvtAckFlowEnable;
+              response_code = RESPONSE_COMMAND_FAILED;
+            }
+
+            aci_gatt_write_resp(write_perm_req->Connection_Handle,
+                        write_perm_req->Attribute_Handle,
+                        (response_code == RESPONSE_COMMAND_OK) ? 0x00 : 0x01, /* write_status: 0 = ok, 1 = error */
+                        response_code,                          /* error code sent to the client */
+                        write_perm_req->Data_Length,
+                        write_perm_req->Data);                             
 
             /*USER CODE END CUSTOM_STM_Service_2_Char_1_ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE*/
           } /*if (write_perm_req->Attribute_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))*/
@@ -552,7 +572,7 @@ void SVCCTL_InitCustomSvc(void)
                           ATTR_PERMISSION_NONE,
                           GATT_NOTIFY_WRITE_REQ_AND_WAIT_FOR_APPL_RESP,
                           0x10,
-                          CHAR_VALUE_LEN_CONSTANT,
+                          CHAR_VALUE_LEN_VARIABLE,
                           &(CustomContext.CustomCmdHdle));
   if (ret != BLE_STATUS_SUCCESS)
   {
