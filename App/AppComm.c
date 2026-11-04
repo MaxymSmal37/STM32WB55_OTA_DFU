@@ -46,6 +46,14 @@ static uint8_t AppComm_IsCommandLengthValid(const CommandFrame_s *frame)
     return 0U;
   }
 }
+static void AppComm_BuildStatusResponse(uint8_t *frame, uint8_t sof, uint8_t b1, uint8_t b2, uint8_t b3)
+{
+  frame[0] = sof;
+  frame[1] = b1;
+  frame[2] = b2;
+  frame[3] = b3;
+  frame[4] = AppComm_CheckCRC8(frame, 4U);
+}
 
 void AppComm_ParseCommandMessage(uint8_t *data, uint8_t length)
 {
@@ -155,6 +163,11 @@ void AppComm_GetUpdateStatus(uint8_t *data)
   App_GetUpdStatus(data);
 }
 
+void AppComm_GetEraseStatus(uint8_t *data)
+{
+  App_GetEraseStatus(data);
+}
+
 void AppComm_CommandResponse(uint8_t response)
 {
   Custom_STM_App_Update_Char_Variable_Length(CUSTOM_STM_CMD, &response, 1U);
@@ -162,7 +175,16 @@ void AppComm_CommandResponse(uint8_t response)
 
 void AppComm_SendUpdateStatus(void)
 {
-  uint8_t status = 0;
-  AppComm_GetUpdateStatus(&status);
-  Custom_STM_App_Update_Char(CUSTOM_STM_STATUS, &status);
+  uint8_t status[APP_COMM_STATUS_SIZE] = {0U};
+  AppComm_GetUpdateStatus(status);
+  Custom_STM_App_Update_Char(CUSTOM_STM_STATUS, status);
+}
+
+void AppComm_SendEraseStatus(void)
+{
+  uint8_t statusPayload[APP_COMM_STATUS_SIZE] = {0U};
+  uint8_t statusFrame[5] = {0U};
+  AppComm_GetEraseStatus(statusPayload);
+  AppComm_BuildStatusResponse(statusFrame, FRAME_SOF, statusPayload[0], statusPayload[1], statusPayload[2]);
+  Custom_STM_App_Update_Char(CUSTOM_STM_STATUS, statusFrame);
 }

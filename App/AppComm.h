@@ -12,6 +12,7 @@
 
 #define APP_COMMAND_FRAME_FIELDS_SIZE 5
 #define APP_COMMAND_DATA_MAX_LENGHT (23 - APP_COMMAND_FRAME_FIELDS_SIZE)
+#define APP_COMM_STATUS_SIZE (1U + sizeof(uint32_t))
 
 typedef  enum
 {
@@ -81,6 +82,8 @@ void AppComm_ProcessCommand(CommandFrame_s *command_frame);
 void AppComm_ParseDataBanchMessage(uint8_t *data, uint8_t length);
 void AppComm_GetUpdateStatus(uint8_t *data);
 void AppComm_SendUpdateStatus(void);
+void AppComm_GetEraseStatus(uint8_t *data);
+void AppComm_SendEraseStatus(void);
 
 
 #endif // APP_COMM_H

@@ -4,9 +4,11 @@
 
 #include "main.h"
 #include "App.h"
+#include "AppComm.h"
 #include "BootloaderLib.h"
 #include "BootloaderConfig.h"
 #include "Logger.h"
+#include "shci.h"
 
 typedef AppState (*AppHandler)(void);
 
@@ -14,6 +16,7 @@ App_s app;
 
 static void App_EraseFlashInit(void);
 static void App_WriteFlashAbort(void);
+static void App_EraseFinish(EraseFlashStatus_s status);
 static EraseFlashStatus_s App_ProcessEraseFlash(void);
 static WriteFlashStatus_s AppProcessWritingPages(void);
 
@@ -43,7 +46,7 @@ static AppState App_Idle(void)
 
 static AppState App_Updating(void)
 {
-  App_JumpToApplication();
+  App_ProcessLed(APP_LED_ON);
 
   if (AppProcessWritingPages() == WRITE_STATUS_OK)
   {
@@ -68,7 +71,7 @@ static AppState App_StartUpdate(void)
 
 static AppState App_EraseFlash(void)
 {
-  //LOG_INFO("Start Flash erasing. ");
+  LOG_INFO("Start Flash erasing. ");
 
   App_ProcessLed(APP_LED_SLOW_BLINK);
 
@@ -99,13 +102,13 @@ void App_ProcessLed(AppLedMode_s led_mode)
     HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
     break;
 
-    case APP_LED_SLOW_BLINK:
-      if (app.led_blink_ms == 0)
-      {
-        HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
-        app.led_blink_ms = APP_LED_BLINK_SLOW_INTERVAL_MS;
-      }
-      break;
+  case APP_LED_SLOW_BLINK:
+    if (app.led_blink_ms == 0)
+    {
+      HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
+      app.led_blink_ms = APP_LED_BLINK_SLOW_INTERVAL_MS;
+    }
+    break;
 
   case APP_LED_FAST_BLINK:
     if (app.led_blink_ms == 0)
@@ -135,92 +138,109 @@ void App_DeviceDisconnected(void)
 static void App_EraseFlashInit(void)
 {
   app.erase_flash.current_state = ERASE_START_PAGE_PROCESSING;
-  app.erase_flash.page_number = FIRST_MEMORY_PAGE;
-  app.erase_flash.status = ERASE_STATUS_INPROGESS;
+  app.erase_flash.page_number   = FIRST_MEMORY_PAGE;
+  app.erase_flash.status        = ERASE_STATUS_INPROGESS;
+  app.erase_flash.timeout_ms    = APP_ERASE_FLASH_TIMEOUT_MS;   /* new field, e.g. 100 */
+  SHCI_C2_FLASH_EraseActivity(ERASE_ACTIVITY_ON);          /* tell CPU2 */
+}
+
+static void App_EraseFinish(EraseFlashStatus_s status)
+{
+  FLASH->CR &= ~FLASH_CR_PER;
+  flash_lock();
+
+  SHCI_C2_FLASH_EraseActivity(ERASE_ACTIVITY_OFF);
+  app.erase_flash.status        = status;
+  app.erase_flash.current_state = ERASE_FLASH_IDLE;
+
+  if (status != ERASE_STATUS_OK) 
+  {
+    app.state = APP_ERROR;
+  }
 }
 
 static EraseFlashStatus_s App_ProcessEraseFlash(void)
 {
-  switch (app.erase_flash.current_state)
+  if (app.app_timer_ms == 0U)
   {
-  case ERASE_FLASH_IDLE:
-    break;
+    app.app_timer_ms = ERASE_FLASH_PROCESSING_TIMEOUT_MS;
 
-  case ERASE_WAITING:
-  {
-    if (FLASH->SR & FLASH_SR_BSY)
+    switch (app.erase_flash.current_state)
     {
+    case ERASE_START_PAGE_PROCESSING:
+      if (app.erase_flash.page_number >= APP_FLASH_PAGES) 
+      {
+        app.erase_flash.page_number = APP_FLASH_PAGES;  /* final 100% */
+        App_EraseFinish(ERASE_STATUS_OK);
+        break;
+      }
+      app.erase_flash.current_address = APP_FLASH_START + 
+                                        app.erase_flash.page_number * FLASH_PAGE_SIZE;
+      app.erase_flash.state_after_waiting = ERASE_PAGE_PROCESSING;
+      app.erase_flash.current_state       = ERASE_WAITING;
+      break;
+
+    case ERASE_WAITING:
+      if (FLASH->SR & (FLASH_BUSY_MASK | FLASH_SR_PESD)) 
+      {
+        if (app.erase_flash.timeout_ms-- == 0U) 
+        {
+          App_EraseFinish(ERASE_STATUS_FAULT);
+          app.erase_flash.intermidiate_erase_status = UG_STATUS_ERROR;
+        }
+        break;
+      }
+
+      if (FLASH->SR & FLASH_ERR_MASK) 
+      {
+        FLASH->SR = FLASH->SR & FLASH_ERR_MASK;
+        App_EraseFinish(ERASE_STATUS_FAULT);
+        app.erase_flash.intermidiate_erase_status = UG_STATUS_ERROR;
+        break;
+      }
+
+      if (FLASH->SR & FLASH_SR_EOP) 
+      {
+        FLASH->SR = FLASH_SR_EOP;
+      }
+  
+      app.erase_flash.current_state = app.erase_flash.state_after_waiting;
+      break;
+
+    case ERASE_PAGE_PROCESSING:
+    {
+      if (flash_unlock() != FLASH_OK) 
+      { 
+        App_EraseFinish(ERASE_STATUS_FAULT); 
+        app.erase_flash.intermidiate_erase_status = UG_STATUS_ERROR;
+        break;
+      }
+
+      uint32_t pnb = (app.erase_flash.current_address - FLASH_BASE) / FLASH_PAGE_SIZE;
+      FLASH->CR = (FLASH->CR & ~FLASH_CR_PNB) | (pnb << FLASH_CR_PNB_Pos) | FLASH_CR_PER;
+      FLASH->CR |= FLASH_CR_STRT;
+
+      app.erase_flash.page_number = (uint16_t)pnb;
+
+      app.erase_flash.state_after_waiting = ERASE_FINISH_PAGE_PROCESSING;
+      app.erase_flash.current_state       = ERASE_WAITING;
       break;
     }
 
-    uint32_t errors = FLASH->SR & (FLASH_SR_PROGERR | FLASH_SR_WRPERR |
-                                   FLASH_SR_PGAERR | FLASH_SR_SIZERR |
-                                   FLASH_SR_PGSERR);
-    if (errors)
-    {
-      FLASH->SR = errors;
+    case ERASE_FINISH_PAGE_PROCESSING:
       FLASH->CR &= ~FLASH_CR_PER;
       flash_lock();
-      app.state = APP_ERROR;
-      app.erase_flash.current_state = ERASE_FLASH_IDLE;
-    }
-    else
-    {
-      app.erase_flash.current_state = app.erase_flash.state_after_waiting;
-    }
-    break;
-  }
+      app.erase_flash.intermidiate_erase_status = UG_STATUS_OK;
+      app.erase_flash.current_state = ERASE_START_PAGE_PROCESSING;
+      break;
 
-  case ERASE_START_PAGE_PROCESSING:
-  {
-    if (app.erase_flash.page_number * FLASH_PAGE_SIZE >= APP_FLASH_SIZE)
-    {
-      app.erase_flash.current_state = ERASE_FLASH_IDLE;
-      app.erase_flash.status = ERASE_STATUS_OK;
-    }
-    else
-    {
-      app.erase_flash.current_address =
-          APP_FLASH_START + (app.erase_flash.page_number * FLASH_PAGE_SIZE);
-      app.erase_flash.state_after_waiting = ERASE_PAGE_PROCESSING;
-      app.erase_flash.current_state = ERASE_WAITING;
-    }
-    break;
-  }
-
-  case ERASE_PAGE_PROCESSING:
-  {
-    if (flash_unlock() != FLASH_OK)
-    {
-      app.state = APP_ERROR;
-      app.erase_flash.current_state = ERASE_FLASH_IDLE;
+    default: 
       break;
     }
 
-    uint32_t page_number =
-        (app.erase_flash.current_address - FLASH_BASE) / FLASH_PAGE_SIZE;
-
-    FLASH->CR &= ~FLASH_CR_PNB;
-    FLASH->CR |= (page_number << FLASH_CR_PNB_Pos) & FLASH_CR_PNB;
-    FLASH->CR |= FLASH_CR_PER;
-    FLASH->CR |= FLASH_CR_STRT;
-
-    app.erase_flash.state_after_waiting = ERASE_FINISH_PAGE_PROCESSING;
-    app.erase_flash.current_state = ERASE_WAITING;
-    break;
+    app.erase_flash.percentage = (app.erase_flash.page_number * 100U) / APP_FLASH_PAGES;
+    AppComm_SendEraseStatus();
   }
-
-  case ERASE_FINISH_PAGE_PROCESSING:
-    FLASH->CR &= ~FLASH_CR_PER;
-    flash_lock();
-    app.erase_flash.page_number++;
-    app.erase_flash.current_state = ERASE_START_PAGE_PROCESSING;
-    break;
-
-  default:
-    break;
-  }
-
   return app.erase_flash.status;
 }
 
@@ -341,7 +361,6 @@ static WriteFlashStatus_s AppProcessWritingPages(void)
     if (errors)
     {
       FLASH->SR = errors;
-      AppProcessWritingPages();
     }
     else
     {
@@ -413,9 +432,16 @@ void App_SetUpdFwHash(uint8_t part, uint8_t *hashData)
   memcpy(&app.fwInfo.hash[part * APP_HASH_PART_SIZE], hashData, APP_HASH_PART_SIZE);
 }
 
-void App_GetUpdStatus(uint8_t* data)
+void App_GetUpdStatus(uint8_t *data)
 {
   data[0] = (uint8_t)app.updateStatus.generalStatus;
+  memcpy(&data[1], &app.updateStatus.currentPageNumber, sizeof(app.updateStatus.currentPageNumber));
+}
+
+void App_GetEraseStatus(uint8_t *data)
+{
+  data[0] = (uint8_t)app.erase_flash.intermidiate_erase_status;
+  data[1] = app.erase_flash.percentage;
 }
 
 //-----------------------------------
@@ -458,5 +484,10 @@ void App_Tick(void)
   if (app.led_blink_ms > 0)
   {
     app.led_blink_ms--;
+  }
+
+  if (app.app_timer_ms > 0)
+  {
+    app.app_timer_ms--;
   }
 }

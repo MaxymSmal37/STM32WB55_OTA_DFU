@@ -23,6 +23,8 @@
 #define APP_FW_SIZE_LENGH 4
 #define FIRST_MEMORY_PAGE 0
 
+#define ERASE_FLASH_PROCESSING_TIMEOUT_MS 10
+
 typedef enum
 {
   APP_INIT = 0,
@@ -96,7 +98,10 @@ typedef struct
   EraseFlashState_s current_state;
   EraseFlashState_s state_after_waiting;
   EraseFlashStatus_s status;
-  uint32_t page_number;
+  uint16_t page_number;
+  uint16_t timeout_ms;
+  UpdateGeneralStatus_t intermidiate_erase_status;
+  uint8_t percentage;
 } erase_flashing_s;
 
 typedef struct 
@@ -123,15 +128,15 @@ typedef struct
   uint32_t currentPageNumber;
 } UpdateStatusFrame_s;
 
-
 typedef struct
 {
   erase_flashing_s erase_flash;
   write_flashing_s write_flash;
   AppState state;
   AppUpdateFwInfo_s fwInfo;
-  volatile uint16_t led_blink_ms;
   UpdateStatusFrame_s updateStatus;
+  volatile uint16_t led_blink_ms;
+  volatile uint16_t app_timer_ms;
 } App_s;
 
 
@@ -147,6 +152,7 @@ void App_DeviceDisconnected(void);
 void App_SetUpdFwSize(uint32_t size);
 void App_SetUpdFwHash(uint8_t part, uint8_t *hashData);
 void App_GetUpdStatus(uint8_t* data);
+void App_GetEraseStatus(uint8_t *data);
 uint8_t App_FlashWriteBantch(uint32_t address, uint8_t size, uint8_t *data);
 void App_JumpToApplication(void);
 

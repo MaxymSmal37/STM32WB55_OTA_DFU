@@ -75,9 +75,9 @@ uint16_t SizeBootloader_Fw_Ver = 16;
 uint16_t SizeWireless_Fw_Ver = 16;
 uint16_t SizeDevice_Sn = 16;
 uint16_t SizeHw_Rev = 8;
-uint16_t SizeCmd = 16;
+uint16_t SizeCmd = 24;
 uint16_t SizeData = 136;
-uint16_t SizeStatus = 1;
+uint16_t SizeStatus = APP_COMM_STATUS_SIZE;
 
 /**
  * START of Section BLE_DRIVER_CONTEXT
@@ -141,7 +141,6 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
   hci_event_pckt *event_pckt;
   evt_blecore_aci *blecore_evt;
   aci_gatt_attribute_modified_event_rp0 *attribute_modified;
-  aci_gatt_write_permit_req_event_rp0   *write_perm_req;
   aci_gatt_read_permit_req_event_rp0    *read_req;
   aci_gatt_notification_complete_event_rp0    *notification_complete;
   Custom_STM_App_Notification_evt_t     Notification;
@@ -207,8 +206,37 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
             }
           }  /* if (attribute_modified->Attr_Handle == (CustomContext.CustomStatusHdle + CHARACTERISTIC_DESCRIPTOR_ATTRIBUTE_OFFSET))*/
 
-          /* USER CODE BEGIN EVT_BLUE_GATT_ATTRIBUTE_MODIFIED_END */
+          else if (attribute_modified->Attr_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
+          {
+            return_value = SVCCTL_EvtAckFlowEnable;
+            /* USER CODE BEGIN CUSTOM_STM_Service_2_Char_1_ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE */
 
+            /* USER CODE END CUSTOM_STM_Service_2_Char_1_ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE */
+          } /* if (attribute_modified->Attr_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))*/
+          else if (attribute_modified->Attr_Handle == (CustomContext.CustomDataHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
+          {
+            return_value = SVCCTL_EvtAckFlowEnable;
+            /* USER CODE BEGIN CUSTOM_STM_Service_2_Char_2_ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE */
+
+            /* USER CODE END CUSTOM_STM_Service_2_Char_2_ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE */
+          } /* if (attribute_modified->Attr_Handle == (CustomContext.CustomDataHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))*/
+          /* USER CODE BEGIN EVT_BLUE_GATT_ATTRIBUTE_MODIFIED_END */
+          if (attribute_modified->Attr_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
+          {
+            return_value = SVCCTL_EvtAckFlowEnable;
+            Notification.Custom_Evt_Opcode = CUSTOM_STM_CMD_WRITE_EVT;
+            Notification.DataTransfered.Length = attribute_modified->Attr_Data_Length;
+            Notification.DataTransfered.pPayload = attribute_modified->Attr_Data;
+            Custom_STM_App_Notification(&Notification);
+          }
+          else if (attribute_modified->Attr_Handle == (CustomContext.CustomDataHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
+          {
+            return_value = SVCCTL_EvtAckFlowEnable;
+            Notification.Custom_Evt_Opcode = CUSTOM_STM_DATA_WRITE_NO_RESP_EVT;
+            Notification.DataTransfered.Length = attribute_modified->Attr_Data_Length;
+            Notification.DataTransfered.pPayload = attribute_modified->Attr_Data;
+            Custom_STM_App_Notification(&Notification);
+          }
           /* USER CODE END EVT_BLUE_GATT_ATTRIBUTE_MODIFIED_END */
           break;
 
@@ -268,47 +296,9 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
 
         case ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE:
           /* USER CODE BEGIN EVT_BLUE_GATT_WRITE_PERMIT_REQ_BEGIN */
-          aci_gatt_write_permit_req_event_rp0 *write_perm_req =
-                (aci_gatt_write_permit_req_event_rp0 *)blecore_evt->data;
+          // aci_gatt_write_permit_req_event_rp0 *write_perm_req =
+          //       (aci_gatt_write_permit_req_event_rp0 *)blecore_evt->data;
           /* USER CODE END EVT_BLUE_GATT_WRITE_PERMIT_REQ_BEGIN */
-          write_perm_req = (aci_gatt_write_permit_req_event_rp0*)blecore_evt->data;
-          if (write_perm_req->Attribute_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
-          {
-            return_value = SVCCTL_EvtAckFlowEnable;
-            /* Allow or reject a write request from a client using aci_gatt_write_resp(...) function */
-            /*USER CODE BEGIN CUSTOM_STM_Service_2_Char_1_ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE */
-            uint8_t response_code = 0;
-
-            if (write_perm_req->Data_Length > APP_COMMAND_FRAME_FIELDS_SIZE)
-            {
-              return_value = SVCCTL_EvtAckFlowDisable;
-              response_code = RESPONSE_COMMAND_OK;
-            }
-            else
-            {
-              return_value = SVCCTL_EvtAckFlowEnable;
-              response_code = RESPONSE_COMMAND_FAILED;
-            }
-
-            aci_gatt_write_resp(write_perm_req->Connection_Handle,
-                        write_perm_req->Attribute_Handle,
-                        (response_code == RESPONSE_COMMAND_OK) ? 0x00 : 0x01, /* write_status: 0 = ok, 1 = error */
-                        response_code,                          /* error code sent to the client */
-                        write_perm_req->Data_Length,
-                        write_perm_req->Data);                             
-
-            /*USER CODE END CUSTOM_STM_Service_2_Char_1_ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE*/
-          } /*if (write_perm_req->Attribute_Handle == (CustomContext.CustomCmdHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))*/
-
-          else if (write_perm_req->Attribute_Handle == (CustomContext.CustomDataHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))
-          {
-            return_value = SVCCTL_EvtAckFlowEnable;
-            /* Allow or reject a write request from a client using aci_gatt_write_resp(...) function */
-            /*USER CODE BEGIN CUSTOM_STM_Service_2_Char_2_ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE */
-
-            /*USER CODE END CUSTOM_STM_Service_2_Char_2_ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE*/
-          } /*if (write_perm_req->Attribute_Handle == (CustomContext.CustomDataHdle + CHARACTERISTIC_VALUE_ATTRIBUTE_OFFSET))*/
-
           /* USER CODE BEGIN EVT_BLUE_GATT_WRITE_PERMIT_REQ_END */
 
           /* USER CODE END EVT_BLUE_GATT_WRITE_PERMIT_REQ_END */
@@ -570,7 +560,7 @@ void SVCCTL_InitCustomSvc(void)
                           SizeCmd,
                           CHAR_PROP_WRITE,
                           ATTR_PERMISSION_NONE,
-                          GATT_NOTIFY_WRITE_REQ_AND_WAIT_FOR_APPL_RESP,
+                          GATT_NOTIFY_ATTRIBUTE_WRITE,
                           0x10,
                           CHAR_VALUE_LEN_VARIABLE,
                           &(CustomContext.CustomCmdHdle));
@@ -596,7 +586,7 @@ void SVCCTL_InitCustomSvc(void)
                           SizeData,
                           CHAR_PROP_WRITE_WITHOUT_RESP,
                           ATTR_PERMISSION_NONE,
-                          GATT_NOTIFY_WRITE_REQ_AND_WAIT_FOR_APPL_RESP,
+                          GATT_NOTIFY_ATTRIBUTE_WRITE,
                           0x10,
                           CHAR_VALUE_LEN_CONSTANT,
                           &(CustomContext.CustomDataHdle));
@@ -1186,4 +1176,3 @@ static tBleStatus Generic_STM_App_Update_Char_Ext(uint16_t ConnectionHandle, uin
   }
   return ret;
 }
-

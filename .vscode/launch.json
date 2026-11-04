@@ -17,7 +17,7 @@
             ],
             "armToolchainPath": "/Applications/ArmGNUToolchain/14.3.rel1/arm-none-eabi/bin",
             "preLaunchTask": "CMake: Build Debug",
-            "runToEntryPoint": "App_Run"
+            "runToEntryPoint": "MX_APPE_Init"
         }
     ]
 }
