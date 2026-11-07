@@ -12,7 +12,11 @@
 
 #define APP_COMMAND_FRAME_FIELDS_SIZE 5
 #define APP_COMMAND_DATA_MAX_LENGHT (23 - APP_COMMAND_FRAME_FIELDS_SIZE)
-#define APP_COMM_STATUS_SIZE (1U + sizeof(uint32_t))
+
+#define APP_COMM_STATUS_PAYLOAD_SIZE 2
+#define APP_COMM_STATUS_SIZE (APP_COMM_STATUS_PAYLOAD_SIZE + 2)
+
+#define APP_COMM_SOF 0xAAU
 
 typedef  enum
 {
@@ -24,6 +28,7 @@ typedef  enum
 
 typedef enum
 {
+  COMMAND_START_ERASE = 0,
   COMMAND_START_UPDATE,
   COMMAND_STOP_UPDATE,
   COMMAND_GET_STATUS,
@@ -41,7 +46,8 @@ typedef enum
 typedef enum 
 {
   RESPONSE_COMMAND_OK = 0,
-  RESPONSE_COMMAND_FAILED = 1
+  RESPONSE_COMMAND_FAILED = -1,
+  RESPONSE_COMMAND_INAPPROPRIATE = -2
 } ResponseIDs_t;
 
 typedef struct
@@ -77,12 +83,10 @@ typedef struct
 
 void AppComm_Init(void);
 void AppComm_ParseCommandMessage(uint8_t *data, uint8_t length);
-void AppComm_WriteDataBanch(uint32_t address, uint8_t size, uint8_t *data);
-void AppComm_ProcessCommand(CommandFrame_s *command_frame);
+ResponseIDs_t AppComm_ProcessCommand(CommandFrame_s *command_frame);
 void AppComm_ParseDataBanchMessage(uint8_t *data, uint8_t length);
 void AppComm_GetUpdateStatus(uint8_t *data);
 void AppComm_SendUpdateStatus(void);
-void AppComm_GetEraseStatus(uint8_t *data);
 void AppComm_SendEraseStatus(void);
 
 

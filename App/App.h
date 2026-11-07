@@ -25,6 +25,8 @@
 
 #define ERASE_FLASH_PROCESSING_TIMEOUT_MS 10
 
+#define APP_MAX_BATCH_SIZE 128
+
 typedef enum
 {
   APP_INIT = 0,
@@ -43,8 +45,9 @@ typedef enum
   APP_LED_OFF = 0,
   APP_LED_ON,
   APP_LED_SLOW_BLINK,
-  APP_LED_FAST_BLINK
-
+  APP_LED_FAST_BLINK,
+  APP_LED_MODE_MIXED_BLINK,
+  APP_LED_MODE_COUNT
 } AppLedMode_s;
 
 typedef enum
@@ -92,9 +95,17 @@ typedef enum
   UG_STATUS_ERROR = -1,
 } UpdateGeneralStatus_t;
 
+typedef enum
+{
+  FLASH_PHASE_PRESTINE = 0,
+  FLASH_PHASE_ERASED,
+  FLASH_PHASE_UPDATED
+} FlashPhase_s;
+
 typedef struct
 {
   uint32_t current_address;
+  uint32_t fault_sr;
   EraseFlashState_s current_state;
   EraseFlashState_s state_after_waiting;
   EraseFlashStatus_s status;
@@ -102,18 +113,24 @@ typedef struct
   uint16_t timeout_ms;
   UpdateGeneralStatus_t intermidiate_erase_status;
   uint8_t percentage;
+  uint8_t  fault_code;
+  uint8_t last_sent_pct;
 } erase_flashing_s;
 
 typedef struct 
 {
-  WriteFlashState_t    current_state;
-  WriteFlashState_t    state_after_waiting;
-  WriteFlashStatus_s   status;
+  WriteFlashState_t   current_state;
+  WriteFlashState_t   state_after_waiting;
+  WriteFlashStatus_s  status;
 
-  uint32_t       address;   /* base address of this write */
-  const uint8_t *data;      /* must stay valid until status != BUSY */
-  uint32_t       size;
-  uint32_t       offset;    /* replaces loop variable i */
+  uint32_t address;                    
+  uint8_t  data[APP_MAX_BATCH_SIZE];  
+  uint16_t size;
+  uint16_t chunk_offset;               
+  uint32_t total_written;
+  UpdateGeneralStatus_t generalStatus;
+  uint8_t  percentage;
+  uint8_t  status_pending;
 } write_flashing_s;
 
 typedef struct
@@ -124,22 +141,15 @@ typedef struct
 
 typedef struct
 {
-  UpdateGeneralStatus_t generalStatus;
-  uint32_t currentPageNumber;
-} UpdateStatusFrame_s;
-
-typedef struct
-{
   erase_flashing_s erase_flash;
   write_flashing_s write_flash;
   AppState state;
   AppUpdateFwInfo_s fwInfo;
-  UpdateStatusFrame_s updateStatus;
   volatile uint16_t led_blink_ms;
+  volatile uint16_t led_blink_mode_toggler;
   volatile uint16_t app_timer_ms;
+  FlashPhase_s flash_phase;
 } App_s;
-
-
 
 void App_Init(void);
 void App_Run(void);
@@ -153,7 +163,7 @@ void App_SetUpdFwSize(uint32_t size);
 void App_SetUpdFwHash(uint8_t part, uint8_t *hashData);
 void App_GetUpdStatus(uint8_t* data);
 void App_GetEraseStatus(uint8_t *data);
-uint8_t App_FlashWriteBantch(uint32_t address, uint8_t size, uint8_t *data);
+int8_t App_FlashWriteBantch(uint32_t offset, uint8_t size, const uint8_t *data);
 void App_JumpToApplication(void);
 
 #endif // APP_H

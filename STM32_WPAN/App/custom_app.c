@@ -40,6 +40,7 @@ typedef struct
 {
   /* SysInfo */
   /* FirmwareTransfer */
+  uint8_t               Cmd_Notification_Status;
   uint8_t               Status_Notification_Status;
   /* USER CODE BEGIN CUSTOM_APP_Context_t */
 
@@ -84,13 +85,16 @@ uint16_t Connection_Handle;
 /* Private function prototypes -----------------------------------------------*/
 /* SysInfo */
 /* FirmwareTransfer */
+static void Custom_Cmd_Update_Char(void);
+
+static void Custom_Cmd_Send_Notification(void);
+
 static void Custom_Status_Update_Char(void);
 
 static void Custom_Status_Send_Notification(void);
 
 /* USER CODE BEGIN PFP */
 tBleStatus BleApp_SetFwVersion(void);
-tBleStatus BleApp_SetWirelessFwInfo(void);
 tBleStatus BleApp_SetSerialNumber(void);
 static tBleStatus BleApp_PublishSysInfo(void);
 /* USER CODE END PFP */
@@ -140,13 +144,22 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
       /* USER CODE END CUSTOM_STM_CMD_WRITE_EVT */
       break;
 
+    case CUSTOM_STM_CMD_NOTIFY_ENABLED_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_CMD_NOTIFY_ENABLED_EVT */
+
+      /* USER CODE END CUSTOM_STM_CMD_NOTIFY_ENABLED_EVT */
+      break;
+
+    case CUSTOM_STM_CMD_NOTIFY_DISABLED_EVT:
+      /* USER CODE BEGIN CUSTOM_STM_CMD_NOTIFY_DISABLED_EVT */
+
+      /* USER CODE END CUSTOM_STM_CMD_NOTIFY_DISABLED_EVT */
+      break;
+
     case CUSTOM_STM_DATA_WRITE_NO_RESP_EVT:
       /* USER CODE BEGIN CUSTOM_STM_DATA_WRITE_NO_RESP_EVT */
-      if (pNotification->DataTransfered.Length >= 128)
-      {
-        AppComm_ParseDataBanchMessage(pNotification->DataTransfered.pPayload,
-                                      pNotification->DataTransfered.Length);
-      }
+      AppComm_ParseDataBanchMessage(pNotification->DataTransfered.pPayload,
+                                    pNotification->DataTransfered.Length);
       /* USER CODE END CUSTOM_STM_DATA_WRITE_NO_RESP_EVT */
       break;
 
@@ -239,6 +252,45 @@ void Custom_APP_Init(void)
 
 /* SysInfo */
 /* FirmwareTransfer */
+__USED void Custom_Cmd_Update_Char(void) /* Property Read */
+{
+  uint8_t updateflag = 0;
+
+  /* USER CODE BEGIN Cmd_UC_1*/
+
+  /* USER CODE END Cmd_UC_1*/
+
+  if (updateflag != 0)
+  {
+    Custom_STM_App_Update_Char(CUSTOM_STM_CMD, (uint8_t *)UpdateCharData);
+  }
+
+  /* USER CODE BEGIN Cmd_UC_Last*/
+
+  /* USER CODE END Cmd_UC_Last*/
+  return;
+}
+
+__USED void Custom_Cmd_Send_Notification(void) /* Property Notification */
+{
+  uint8_t updateflag = 0;
+
+  /* USER CODE BEGIN Cmd_NS_1*/
+
+  /* USER CODE END Cmd_NS_1*/
+
+  if (updateflag != 0)
+  {
+    Custom_STM_App_Update_Char(CUSTOM_STM_CMD, (uint8_t *)UpdateCharData);
+  }
+
+  /* USER CODE BEGIN Cmd_NS_Last*/
+
+  /* USER CODE END Cmd_NS_Last*/
+
+  return;
+}
+
 __USED void Custom_Status_Update_Char(void) /* Property Read */
 {
   uint8_t updateflag = 0;
@@ -283,7 +335,9 @@ tBleStatus BleApp_SetFwVersion(void)
 {
   tBleStatus ret;
   uint8_t* fwVersion;
-  uint8_t fwVersionLen = Bootloader_getFirmwareVersion(fwVersion);
+  uint8_t fwVersionLen;
+  
+  fwVersionLen = Bootloader_getFirmwareVersion(fwVersion);
 
   memcpy(UpdateCharData, fwVersion, fwVersionLen);
 
@@ -291,14 +345,6 @@ tBleStatus BleApp_SetFwVersion(void)
 
   APP_DBG_MSG("BootloaderFwVer update ret=0x%02X\n", ret);
   return ret;
-}
-
-tBleStatus BleApp_SetWirelessFwInfo(void)
-{
-  uint8_t* fwVersion = "123456789ABCDEF";
-
-  memcpy(UpdateCharData, &fwVersion, sizeof(fwVersion));
-  return Custom_STM_App_Update_Char(CUSTOM_STM_WIRELESS_FW_VER_READ_EVT, UpdateCharData);
 }
 
 tBleStatus BleApp_SetHW_Revision(void)
