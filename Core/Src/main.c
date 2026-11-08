@@ -28,6 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "App.h"
+#include "Config.h"
 #include "usbd_cdc_if.h"
 #include "Logger.h"
 /* USER CODE END Includes */
@@ -50,6 +51,19 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+typedef enum
+{
+  BOOT_DFU_NOT_REQUESTED = 0,
+  BOOT_DFU_REQUESTED
+} dfuRequestStates_e;
+
+typedef struct
+{
+ uint16_t bootTimeout;
+ uint8_t dfuReuested;
+} bootMode_t;
+
+bootMode_t bootMode = { .bootTimeout = BOOT_REQUEST_TIMEOUT_MS, .dfuReuested = BOOT_DFU_NOT_REQUESTED };
 
 /* USER CODE END PV */
 
@@ -107,6 +121,15 @@ int main(void)
   MX_TIM2_Init();
   MX_RF_Init();
   /* USER CODE BEGIN 2 */
+  while (bootMode.bootTimeout > 0)
+  {
+    if (HAL_GPIO_ReadPin(GPIOH, GPIO_PIN_3) == GPIO_PIN_SET)
+    {
+      bootMode.dfuReuested = BOOT_DFU_REQUESTED;
+      break;
+    }
+  }
+
   App_Init();
   HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
   /* USER CODE END 2 */
@@ -216,15 +239,13 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-// int _write(int file, char *ptr, int len)
-// {
-//   // In alternativa alla trasmissione carattere per carattere, trasmette l'intero buffer
-//   while (CDC_Transmit_FS((uint8_t*)ptr, len) == USBD_BUSY)
-//   {
-//     // Attende se la periferica USB è occupata
-//   }
-//   return len;
-// }
+void Bootloader_HandleBootTimeout(void)
+{
+  if (--bootMode.bootTimeout == 0 &&  bootMode.dfuReuested == 0)
+  {
+    App_JumpToApplication();
+  }
+}
 /* USER CODE END 4 */
 
 /**

@@ -24,4 +24,6 @@
     #define HW_REVISION "A2314V05"
 #endif
 
+#define BOOT_REQUEST_TIMEOUT_MS 2000U
+
 #endif /* CONFIG_H */

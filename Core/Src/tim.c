@@ -107,12 +107,16 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+void Bootloader_HandleBootTimeout(void);
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM2)
     {
         // Place your custom code here (e.g., toggle an LED, update a flag)
       App_Tick();
+      Bootloader_HandleBootTimeout();
     }
 }
 /* USER CODE END 1 */
