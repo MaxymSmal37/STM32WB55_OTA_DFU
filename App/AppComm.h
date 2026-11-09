@@ -89,5 +89,4 @@ void AppComm_GetUpdateStatus(uint8_t *data);
 void AppComm_SendUpdateStatus(void);
 void AppComm_SendEraseStatus(void);
 
-
 #endif // APP_COMM_H

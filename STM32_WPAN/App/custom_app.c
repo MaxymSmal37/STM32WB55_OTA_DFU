@@ -334,7 +334,7 @@ __USED void Custom_Status_Send_Notification(void) /* Property Notification */
 tBleStatus BleApp_SetFwVersion(void)
 {
   tBleStatus ret;
-  uint8_t* fwVersion;
+  uint8_t fwVersion[SYSINFO_STR_LEN] = {0U};
   uint8_t fwVersionLen;
   
   fwVersionLen = Bootloader_getFirmwareVersion(fwVersion);
@@ -349,20 +349,20 @@ tBleStatus BleApp_SetFwVersion(void)
 
 tBleStatus BleApp_SetHW_Revision(void)
 {
-  uint8_t* hwRev;
+  uint8_t hwRev[SYSINFO_HWREV_LEN] = {0U};
   uint8_t hwRevLen = Bootloader_getHwRevision(hwRev);
 
-  memcpy(UpdateCharData, &hwRev, hwRevLen);
+  memcpy(UpdateCharData, hwRev, hwRevLen);
 
-  return Custom_STM_App_Update_Char(CUSTOM_STM_HW_REV_READ_EVT, UpdateCharData);
+  return Custom_STM_App_Update_Char(CUSTOM_STM_HW_REV, UpdateCharData);
 }
 
 tBleStatus BleApp_SetSerialNumber(void)
 {
-  uint8_t* serialNumber;
+  uint8_t serialNumber[SYSINFO_STR_LEN] = {0U};
   uint8_t serialNumberLen = Bootloader_getSerialNumber(serialNumber);
 
-  memcpy(UpdateCharData, &serialNumber, serialNumberLen);
+  memcpy(UpdateCharData, serialNumber, serialNumberLen);
 
   return Custom_STM_App_Update_Char(CUSTOM_STM_DEVICE_SN, UpdateCharData);
 }
