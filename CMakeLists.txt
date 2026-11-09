@@ -34,6 +34,24 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+set(FW_VERSION_PREFIX_MAJOR "M" CACHE STRING "Firmware version prefix")
+set(FW_VERSION_DEFAULT "A1.2.3-a243dt3c" CACHE STRING
+    "Firmware version used when no release tag is available")
+set(FW_VERSION_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(FW_VERSION_HEADER "${FW_VERSION_GENERATED_DIR}/FwVersion.h")
+
+add_custom_target(generate_fw_version
+    COMMAND ${CMAKE_COMMAND}
+        "-DSOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DOUTPUT_FILE=${FW_VERSION_HEADER}"
+        "-DTEMPLATE_FILE=${PROJECT_SOURCE_DIR}/Common/FwVersion.h.in"
+        "-DFW_VERSION_PREFIX_MAJOR=${FW_VERSION_PREFIX_MAJOR}"
+        "-DFW_VERSION_DEFAULT=${FW_VERSION_DEFAULT}"
+        -P "${PROJECT_SOURCE_DIR}/cmake/GenerateFwVersion.cmake"
+    BYPRODUCTS "${FW_VERSION_HEADER}"
+    VERBATIM
+)
+
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 

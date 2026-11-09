@@ -3,3 +3,4 @@
 build/
 Debug/
 .vscode/
+FwVersion.h

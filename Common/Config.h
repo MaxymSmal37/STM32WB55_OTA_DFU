@@ -6,15 +6,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define FW_VERSION_PREFIX_MAJOR "M"
+#include "FwVersion.h"
 
-#define USE_DEFAULT_TEST_FW_VERSION 1
 #define USE_DEFAULT_SERIAL_NUMBER   1
 #define USE_DEFAULT_HW_REVISION     1
-
-#if USE_DEFAULT_TEST_FW_VERSION
-    #define FW_VERSION "A1.2.3-a243dt3c"
-#endif
 
 #if USE_DEFAULT_SERIAL_NUMBER 
     #define DEVICE_SN "FA171026B1E7"
